@@ -1,0 +1,54 @@
+name: Download and Push Files
+
+on:
+  schedule:
+    - cron: "0 0 * * *"  # Runs once a day at midnight UTC
+  
+  workflow_dispatch:
+
+jobs:
+  download-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install curl
+        run: sudo apt-get install curl
+
+      - name: Create directories for downloads
+        run: |
+          mkdir -p ./_epg/ ./_m3u
+
+      - name: Download Files to Custom Locations
+        run: |
+          urls=(
+            "${{ secrets.FILE_URL_1 }}"
+            "${{ secrets.FILE_URL_2 }}"
+            "${{ secrets.FILE_URL_3 }}"
+          )
+          
+          destinations=(
+            "./_m3u/000.m3u"
+            "./_epg/000.xml.gz"
+            "./_epg/001.xml.gz"
+          )
+          
+          for i in "${!urls[@]}"; do
+            echo "Downloading ${urls[$i]} to ${destinations[$i]}"
+            curl -L "${urls[$i]}" -o "${destinations[$i]}"
+          done
+
+      - name: Add downloaded files
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add .
+          git commit -m "tv.meta"
+          git push origin main
+
+      - name: Push changes
+        run: git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
